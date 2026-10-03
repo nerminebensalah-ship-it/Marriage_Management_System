@@ -22,7 +22,7 @@ Projet réalisé en binôme par **Lina Chtioui** et **Nermine Ben Salah**, dans 
 ## Structure du projet
 * `/sql` : Contient le script complet de création, d'insertion et de requêtes.
 * `/pdf` : Contient le rapport détaillé du projet et le diagramme MCD.
-* `/docs` : Contient le prototype d'application (`index.html`).
+* `/docs` : Contient le prototype d'application (`wedding_Planner_App.html`).
 
 ## Exécuter la base de données
 1. Ouvrir Oracle SQL Developer.
