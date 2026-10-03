@@ -1,6 +1,10 @@
-# Système de Gestion de Mariage - Base de Données
+# 💍 Système de Gestion de Mariage - Base de Données
 
-Ce mini-projet académique consiste en la modélisation et la création d'une base de données relationnelle pour la gestion complète des prestations d'un mariage (traiteurs, salles, invités, prestataires).
+Ce mini-projet académique consiste en la modélisation et la création d'une base de données relationnelle pour la gestion complète des prestations d'un mariage (traiteurs, salles, invités, prestataires), avec un prototype d'application construit par-dessus.
+
+Projet réalisé en binôme par **Lina Chtioui** et **Nermine Ben Salah**, dans le cadre de notre cursus en école d'ingénieurs (INSAT, IIA3/1, 2025/2026).
+
+🌐 **[Démo en ligne du prototype]([https://ton-pseudo.github.io/nom-du-depot/](https://github.com/nerminebensalah-ship-it/Marriage_Management_System/blob/main/wedding_Planner_App.html))
 
 ## Technologies et Outils
 * **SGBD :** Oracle SQL
