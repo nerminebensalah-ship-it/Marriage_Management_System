@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Wedding Planner App</title>
+<style>
+:root{color-scheme:light;--bg:#f6ece1;--card:#fffafa;--ink:#1b2a5a;--mut:#56618a;--line:#efd3d8;--acc:#b83a70;--soft:#fde3ec;--ok:#2a7a52;--warn:#a86a10;--bad:#b3343f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 40px}
+h1{font:600 clamp(26px,5vw,36px)/1.15 Georgia,"Iowan Old Style",serif;margin:0 0 4px}
+h2{font:600 19px/1.2 Georgia,"Iowan Old Style",serif;margin:0 0 12px}
+.sub,.meta{color:var(--mut);margin:0 0 16px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:600}
+.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 14px}
+.x{background:none;border:0;color:var(--bad);font-weight:600;padding:2px 6px}
+.note{background:var(--soft);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.roles,.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:16px}
+.roles button{text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:18px}
+.roles button:hover:not(:disabled){border-color:var(--acc)}
+.roles button:disabled{opacity:.55;cursor:not-allowed}
+.roles b{display:block;font-size:17px;margin-bottom:4px}
+.roles span{color:var(--mut);font-size:14px}
+.kpi b{display:block;font:600 28px/1.1 Georgia,serif;color:var(--acc)}
+.kpi span{color:var(--mut);font-size:13px}
+.tabs,.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.tabs button,.chips button{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:20px;padding:6px 14px}
+.tabs button.on,.chips button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.form{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));align-items:end}
+.f span{display:block;font-size:13px;color:var(--mut);margin-bottom:2px}
+input,select{width:100%;font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.sc{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mut);font-weight:600}
+.n{text-align:right;font-variant-numeric:tabular-nums}
+.tag{border-radius:12px;padding:2px 9px;font-size:12px;font-weight:600;background:var(--soft)}
+.ok{color:var(--ok)}.wn{color:var(--warn)}.bd{color:var(--bad)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:#fff;padding:10px 18px;border-radius:20px;z-index:5;max-width:90%}
+footer{color:var(--mut);font-size:13px;margin-top:24px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="top"><div><h1>💍 Wedding Planner App</h1><p class="sub" id="sub"></p></div><button class="ghost" id="sw" onclick="setRole('')" hidden>🔄 Switch role</button></div>
+<div id="app"></div>
+<footer>Prototype by Lina Chtioui and Nermine Ben Salah, INSAT, based on the project's database model. Roles are chosen by the user and there is no password login, so do not enter real personal data.</footer>
+</div>
+<div id="toast"></div>
+<script>
+var D={venues:[],weddings:[],vendors:[],guests:[],contracts:[]};
+var H={db:null,uid:'me',admin:false};
+var S={role:'',tab:0,wid:'',dirty:0};
+var NUMK=['cap','price','budget','guests','amount','paid','tariff'];
+var DIETS=['Standard','Vegetarian','Vegan','Halal','Gluten-free','Lactose-free'];
+var $=function(i){return document.getElementById(i)};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+var f=function(n){return Number(n||0).toLocaleString('en-US')};
+var dt=function(d){return d?new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):''};
+var val=function(i){return ($(i)||{}).value||''};
+var op=function(a){return a.map(function(x){return [x,x]})};
+var wl=function(w){return w.couple+' ('+dt(w.date)+')'};
+var wname=function(id){var w=D.weddings.filter(function(x){return x.id==id})[0];return w?wl(w):'Unknown wedding'};
+
+/* ---------- data layer: shared db when available, browser storage otherwise ---------- */
+function saveLocal(){try{localStorage.setItem('wpa1',JSON.stringify(D))}catch(e){}}
+function loadLocal(){try{var x=JSON.parse(localStorage.getItem('wpa1'));if(x)for(var k in D)D[k]=x[k]||[]}catch(e){}}
+function toast(m){var t=$('toast');t.innerHTML='<div class="toast">'+esc(m)+'</div>';setTimeout(function(){t.innerHTML=''},3200)}
+function add(col,o){
+ if(H.db){return H.db.collection(col).add(o).catch(function(){toast('You can view this app but not change its data.')})}
+ o.id='l'+Date.now()+Math.random().toString(36).slice(2,6);D[col].push(o);saveLocal();draw()}
+function del(col,id){
+ if(H.db){H.db.collection(col).doc(id).delete().catch(function(){toast('You cannot delete this item.')})}
+ else{D[col]=D[col].filter(function(x){return x.id!=id});saveLocal();draw()}}
+function listen(col){H.db.collection(col).onSnapshot(function(s){D[col]=s.docs.map(function(d){var x=d.data();x.id=d.id;return x});draw()},function(){})}
+function mk(col,map,extra,must,msg){
+ var o=extra||{};
+ for(var k in map){var v=val(map[k]).trim();o[k]=NUMK.indexOf(k)>-1?(Number(v)||0):v}
+ if(must.some(function(k){return !o[k]})){toast('Please fill in: '+must.join(', '));return}
+ add(col,o);if(msg)toast(msg)}
+function seed(){
+ [['Le Grand Palais','Sousse',300,5000],['Château des Jasmin','Hammamet',200,3500],['Villa Méditerranée','Tunis',500,9000]].forEach(function(v){add('venues',{name:v[0],city:v[1],cap:v[2],price:v[3]})});
+ [['Sami & Ines','2027-06-12','Romantic countryside',25000,150,'Le Grand Palais'],['Nizar & Sonia','2027-09-18','Modern oriental',18000,100,'Château des Jasmin']].forEach(function(w){add('weddings',{couple:w[0],date:w[1],theme:w[2],budget:w[3],guests:w[4],venue:w[5],owner:H.uid})});
+ [['Sophie Martin','Photographer',800],['Julien Dupont','DJ',600]].forEach(function(v){add('vendors',{name:v[0],service:v[1],phone:'',tariff:v[2],owner:H.uid})})}
+
+/* ---------- small UI helpers ---------- */
+function fld(id,l,t,o){return '<label class="f"><span>'+l+'</span>'+(o?'<select id="'+id+'">'+o.map(function(x){return '<option value="'+esc(x[0])+'">'+esc(x[1])+'</option>'}).join('')+'</select>':'<input id="'+id+'" type="'+(t||'text')+'">')+'</label>'}
+function tbl(h,r,empty){if(!r.length)return '<p class="meta">'+empty+'</p>';return '<div class="sc"><table><tr>'+h.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr>'+r.join('')+'</table></div>'}
+function kpis(a){return '<div class="grid">'+a.map(function(x){return '<div class="card kpi" style="margin:0"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'}).join('')+'</div>'}
+function tabs(a){return '<div class="tabs">'+a.map(function(x,i){return '<button class="'+(i==S.tab?'on':'')+'" onclick="goTab('+i+')">'+x+'</button>'}).join('')+'</div>'}
+function xb(col,id){return '<td><button class="x" onclick="del(\''+col+'\',\''+id+'\')" aria-label="Delete">Delete</button></td>'}
+function wopts(list){return (list.length?list:D.weddings).map(function(w){return [w.id,wl(w)]})}
+function conf(wid){return D.guests.filter(function(g){return g.wid==wid&&g.status=='Confirmed'}).length}
+function tag(s){var c=s=='Confirmed'||s=='Signed'?'ok':s=='Declined'||s=='Cancelled'?'bd':'wn';return '<span class="tag '+c+'">'+esc(s)+'</span>'}
+
+/* ---------- shared tables ---------- */
+function wedTable(list,canDel){
+ return tbl(['Couple','Date','Theme','Venue','Budget','Guests'].concat(canDel?['']:[]),list.map(function(w){return '<tr><td>'+esc(w.couple)+'</td><td>'+dt(w.date)+'</td><td>'+esc(w.theme)+'</td><td>'+esc(w.venue)+'</td><td class="n">'+f(w.budget)+'</td><td class="n">'+conf(w.id)+' / '+f(w.guests)+'</td>'+(canDel?xb('weddings',w.id):'')+'</tr>'}),'No wedding registered yet.')}
+function wedForm(){
+ return '<div class="form">'+fld('wc','Couple names')+fld('wd','Date','date')+fld('wt','Theme')+fld('wb','Budget','number')+fld('wg','Expected guests','number')+fld('wv','Venue',null,[['','Choose a venue']].concat(D.venues.map(function(v){return [v.name,v.name+' ('+v.city+', up to '+v.cap+')']})))+'<button class="btn" onclick="addWed()">💒 Save wedding</button></div>'}
+function conTable(list,canDel){
+ return tbl(['Vendor','Wedding','Total','Paid','Balance','Status'].concat(canDel?['']:[]),list.map(function(c){return '<tr><td>'+esc(c.vendor)+'</td><td>'+esc(wname(c.wid))+'</td><td class="n">'+f(c.amount)+'</td><td class="n">'+f(c.paid)+'</td><td class="n">'+f(c.amount-c.paid)+'</td><td>'+tag(c.status)+'</td>'+(canDel?xb('contracts',c.id):'')+'</tr>'}),'No contract yet.')}
+function guestTable(wid,canDel){
+ return tbl(['Name','Email','Menu need','Answer'].concat(canDel?['']:[]),D.guests.filter(function(g){return g.wid==wid}).map(function(g){return '<tr><td>'+esc(g.name)+'</td><td>'+esc(g.email)+'</td><td>'+esc(g.diet)+'</td><td>'+tag(g.status)+'</td>'+(canDel?xb('guests',g.id):'')+'</tr>'}),'No guest yet.')}
+
+/* ---------- actions ---------- */
+function setRole(r){S.role=r;S.tab=0;S.wid='';draw()}
+function goTab(i){S.tab=i;draw()}
+function pickW(id){S.wid=id;draw()}
+function addWed(){mk('weddings',{couple:'wc',date:'wd',theme:'wt',budget:'wb',guests:'wg',venue:'wv'},{owner:H.uid},['couple','date','venue'],'Wedding saved 💒')}
+function addVenue(){mk('venues',{name:'vn',city:'vc',cap:'vk',price:'vp'},{},['name','cap'],'Venue saved 🏛️')}
+function addCon(){mk('contracts',{vendor:'cv',wid:'cw',amount:'ca',paid:'cp',status:'cs'},{},['vendor','wid','amount'],'Contract saved 📝')}
+function addGuest(own){mk('guests',{name:'gn',email:'ge',diet:'gd',status:'gs'},{wid:own?S.wid:val('gw'),by:H.uid},['name','wid'],own?'Guest added 🥂':'Thank you! Your answer is saved 🎉')}
+function addVendor(){mk('vendors',{name:'pn',service:'ps',phone:'pt',tariff:'pf'},{owner:H.uid},['name','service'],'Profile saved 📸')}
+
+/* ---------- views ---------- */
+function home(){
+ var R=[['organizer','📋 Organizer','Manage venues, weddings, vendors and contracts.'],['couple','💑 Couple','Plan your wedding and your guest list.'],['guest','🥂 Guest','Answer your invitation and tell us your menu needs.'],['vendor','📸 Vendor','Register your services and follow your contracts.']];
+ var lock=H.db&&!H.admin;
+ return '<div class="roles">'+R.map(function(r){var d=r[0]=='organizer'&&lock;return '<button onclick="setRole(\''+r[0]+'\')"'+(d?' disabled':'')+'><b>'+r[1]+'</b><span>'+r[2]+(d?' Only the agency owner and editors can open this space.':'')+'</span></button>'}).join('')+'</div>'}
+function org(){
+ var T=['💒 Weddings','🏛️ Venues','📸 Vendors','📝 Contracts'],b='';
+ if(S.tab==0)b='<div class="card"><h2>Register a wedding</h2>'+wedForm()+'</div><div class="card"><h2>All weddings</h2>'+wedTable(D.weddings,true)+'</div>'+
+  '<div class="card"><h2>Guest list</h2><div class="chips">'+D.weddings.map(function(w){return '<button class="'+(w.id==(S.wid||D.weddings[0].id)?'on':'')+'" onclick="pickW(\''+w.id+'\')">'+esc(w.couple)+'</button>'}).join('')+'</div>'+(D.weddings.length?guestTable(S.wid||D.weddings[0].id,true):'<p class="meta">Register a wedding first.</p>')+'</div>';
+ if(S.tab==1)b='<div class="card"><h2>Add a venue</h2><div class="form">'+fld('vn','Venue name')+fld('vc','City')+fld('vk','Capacity','number')+fld('vp','Rental price','number')+'<button class="btn" onclick="addVenue()">🏛️ Save venue</button></div></div><div class="card"><h2>Venues</h2>'+tbl(['Name','City','Capacity','Price',''],D.venues.map(function(v){return '<tr><td>'+esc(v.name)+'</td><td>'+esc(v.city)+'</td><td class="n">'+f(v.cap)+'</td><td class="n">'+f(v.price)+'</td>'+xb('venues',v.id)+'</tr>'}),'No venue yet.')+'</div>';
+ if(S.tab==2)b='<div class="card"><h2>Registered vendors</h2>'+tbl(['Name','Service','Phone','Rate',''],D.vendors.map(function(v){return '<tr><td>'+esc(v.name)+'</td><td>'+esc(v.service)+'</td><td>'+esc(v.phone)+'</td><td class="n">'+f(v.tariff)+'</td>'+xb('vendors',v.id)+'</tr>'}),'No vendor has registered yet. Vendors sign up from their own space.')+'</div>';
+ if(S.tab==3)b='<div class="card"><h2>New contract</h2><div class="form">'+fld('cv','Vendor',null,D.vendors.map(function(v){return [v.name,v.name+' ('+v.service+')']}))+fld('cw','Wedding',null,wopts([]))+fld('ca','Total amount','number')+fld('cp','Paid so far','number')+fld('cs','Status',null,op(['Signed','Pending','Cancelled']))+'<button class="btn" onclick="addCon()">📝 Save contract</button></div></div><div class="card"><h2>Contracts</h2>'+conTable(D.contracts,true)+'</div>';
+ var paid=0,tot=0;D.contracts.forEach(function(c){paid+=c.paid;tot+=c.amount});
+ return kpis([[D.weddings.length,'💒 weddings'],[D.venues.length,'🏛️ venues'],[D.vendors.length,'📸 vendors'],[D.guests.filter(function(g){return g.status=='Confirmed'}).length,'🥂 confirmed guests'],[f(tot-paid),'💰 left to pay']])+tabs(T)+b+
+  (!D.weddings.length&&!D.venues.length?'<div class="note">The app is empty. <button class="ghost" onclick="seed()">✨ Add sample data</button></div>':'')}
+function couple(){
+ var mine=D.weddings.filter(function(w){return w.owner==H.uid}),w=mine.filter(function(x){return x.id==S.wid})[0]||mine[0],b='';
+ if(w){S.wid=w.id;b='<div class="chips">'+mine.map(function(x){return '<button class="'+(x.id==w.id?'on':'')+'" onclick="pickW(\''+x.id+'\')">'+esc(x.couple)+'</button>'}).join('')+'</div>'+
+  '<div class="card"><h2>💒 '+esc(w.couple)+'</h2><p class="meta">'+dt(w.date)+' at '+esc(w.venue)+'. Theme: '+esc(w.theme||'not set')+'. Budget: '+f(w.budget)+'. '+conf(w.id)+' confirmed of '+f(w.guests)+' expected guests.</p></div>'+
+  '<div class="card"><h2>Add a guest</h2><div class="form">'+fld('gn','Guest name')+fld('ge','Email','email')+fld('gd','Menu need',null,op(DIETS))+fld('gs','Answer',null,op(['Pending','Confirmed','Declined']))+'<button class="btn" onclick="addGuest(1)">🥂 Add guest</button></div></div>'+
+  '<div class="card"><h2>Your guest list</h2>'+guestTable(w.id,true)+'</div><div class="card"><h2>Contracts for your wedding</h2>'+conTable(D.contracts.filter(function(c){return c.wid==w.id}),false)+'</div>'}
+ return b+'<div class="card"><h2>'+(w?'Register another wedding':'Register your wedding')+'</h2>'+wedForm()+'</div>'}
+function guest(){
+ return '<div class="card"><h2>🎉 Answer your invitation</h2>'+(D.weddings.length?'<div class="form">'+fld('gw','Wedding',null,wopts([]))+fld('gn','Your name')+fld('ge','Email','email')+fld('gd','Menu need',null,op(DIETS))+fld('gs','Your answer',null,[['Confirmed','I will come'],['Declined','I cannot come']])+'<button class="btn" onclick="addGuest(0)">💌 Send my answer</button></div>':'<p class="meta">No wedding is open for answers yet. Ask the couple to register their wedding first.</p>')+'</div>'}
+function vendor(){
+ var mine=D.vendors.filter(function(v){return v.owner==H.uid}),names=mine.map(function(v){return v.name});
+ return '<div class="card"><h2>📸 Register your services</h2><div class="form">'+fld('pn','Name or company')+fld('ps','Service (photographer, DJ, florist...)')+fld('pt','Phone')+fld('pf','Rate','number')+'<button class="btn" onclick="addVendor()">📸 Save profile</button></div></div>'+
+  '<div class="card"><h2>Your profiles</h2>'+tbl(['Name','Service','Phone','Rate'],mine.map(function(v){return '<tr><td>'+esc(v.name)+'</td><td>'+esc(v.service)+'</td><td>'+esc(v.phone)+'</td><td class="n">'+f(v.tariff)+'</td></tr>'}),'You have no profile yet.')+'</div>'+
+  '<div class="card"><h2>Your contracts</h2>'+conTable(D.contracts.filter(function(c){return names.indexOf(c.vendor)>-1}),false)+'</div>'}
+function draw(){
+ var a=document.activeElement;
+ if(a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName)&&$('app').contains(a)){S.dirty=1;return}
+ S.dirty=0;
+ $('sw').hidden=!S.role;
+ $('sub').textContent=S.role?'':'Choose your space to get started.';
+ var v={'':home,organizer:org,couple:couple,guest:guest,vendor:vendor}[S.role];
+ $('app').innerHTML=(H.db?'':'<div class="note">Demo mode: your data stays in this browser only.</div>')+v()}
+document.addEventListener('focusout',function(){setTimeout(function(){if(S.dirty)draw()},150)});
+
+async function init(){
+ try{
+  if(window.claude&&claude.use){
+   var u=await claude.use('user'),d=await claude.use('db');
+   if(d){H.db=d;if(u){H.uid=String(await u.id());H.admin=!!(await u.canEdit())}}}
+ }catch(e){H.db=null}
+ if(H.db){['venues','weddings','vendors','guests','contracts'].forEach(listen)}
+ else{loadLocal();H.admin=true;if(!D.weddings.length&&!D.venues.length)seed()}
+ draw()}
+draw();init();
+</script>
+</body>
+</html>
